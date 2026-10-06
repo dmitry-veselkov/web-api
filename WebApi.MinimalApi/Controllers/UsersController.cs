@@ -41,11 +41,6 @@ public class UsersController : Controller
             return BadRequest();
         }
 
-        if (!IsValidLogin(request.Login))
-        {
-            ModelState.AddModelError("Login", "Invalid login");
-        }
-
         if (!ModelState.IsValid)
         {
             return UnprocessableEntity(ModelState);
@@ -61,5 +56,30 @@ public class UsersController : Controller
             createdUser.Id);
     }
 
-    private static bool IsValidLogin(string? login) => login?.All(char.IsLetterOrDigit) ?? false;
+    [HttpPut("{userId}")]
+    public IActionResult UpsertUser([FromRoute] Guid userId, [FromBody] UserUpdateRequest? request)
+    {
+        if (request is null || userId == Guid.Empty)
+        {
+            return BadRequest();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return UnprocessableEntity(ModelState);
+        }
+        
+        var user = mapper.Map(request, new UserEntity(userId));
+        userRepository.UpdateOrInsert(user, out var isInserted);
+
+        if (isInserted)
+        {
+            return CreatedAtRoute(
+                nameof(GetUserById),
+                new { userId = user.Id },
+                user.Id);
+        }
+        
+        return NoContent();
+    }
 }
