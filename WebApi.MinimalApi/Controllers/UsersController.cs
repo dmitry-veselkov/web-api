@@ -19,8 +19,8 @@ public class UsersController : Controller
         this.mapper = mapper;
     }
 
-    [HttpGet("{userId}")]
-    public ActionResult<UserDto> GetUserById([FromRoute] Guid userId)
+    [HttpGet("{userId}", Name = nameof(GetUserById))]
+    public ActionResult<UserResponse> GetUserById([FromRoute] Guid userId)
     {
         var user = userRepository.FindById(userId);
         if (user is null)
@@ -28,14 +28,38 @@ public class UsersController : Controller
             return NotFound();
         }
 
-        var userDto = mapper.Map<UserDto>(user);
+        var userDto = mapper.Map<UserResponse>(user);
 
         return userDto;
     }
 
     [HttpPost]
-    public IActionResult CreateUser([FromBody] object user)
+    public IActionResult CreateUser([FromBody] UserCreationRequest? request)
     {
-        throw new NotImplementedException();
+        if (request is null)
+        {
+            return BadRequest();
+        }
+
+        if (!IsValidLogin(request.Login))
+        {
+            ModelState.AddModelError("Login", "Invalid login");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return UnprocessableEntity(ModelState);
+        }
+
+        var user = mapper.Map<UserEntity>(request);
+
+        var createdUser = userRepository.Insert(user);
+
+        return CreatedAtRoute(
+            nameof(GetUserById),
+            new { userId = createdUser.Id },
+            createdUser.Id);
     }
+
+    private static bool IsValidLogin(string? login) => login?.All(char.IsLetterOrDigit) ?? false;
 }
