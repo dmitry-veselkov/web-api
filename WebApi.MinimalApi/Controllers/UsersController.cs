@@ -1,7 +1,8 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
 using AutoMapper;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using WebApi.MinimalApi.Domain;
 using WebApi.MinimalApi.Models;
 
@@ -14,11 +15,13 @@ public class UsersController : Controller
 {
     private readonly IUserRepository userRepository;
     private readonly IMapper mapper;
+    private readonly LinkGenerator linkGenerator;
 
-    public UsersController(IUserRepository userRepository, IMapper mapper)
+    public UsersController(IUserRepository userRepository, IMapper mapper, LinkGenerator linkGenerator)
     {
         this.userRepository = userRepository;
         this.mapper = mapper;
+        this.linkGenerator = linkGenerator;
     }
 
     [HttpHead("{userId}")]
@@ -132,5 +135,56 @@ public class UsersController : Controller
         userRepository.Delete(userId);
 
         return NoContent();
+    }
+
+    [HttpGet(Name = nameof(GetUsers))]
+    public IActionResult GetUsers([FromQuery] UsersGetRequest request)
+    {
+        var pageSize = request.PageSize switch
+        {
+            < 1 => 1,
+            > 20 => 20,
+            _ => request.PageSize
+        };
+
+        var pageNumber = request.PageNumber switch
+        {
+            < 1 => 1,
+            _ => request.PageNumber
+        };
+
+        var pageOfUsers = userRepository.GetPage(pageNumber, pageSize);
+        var users = mapper.Map<IEnumerable<UserResponse>>(pageOfUsers);
+
+        var paginationHeader = new
+        {
+            previousPageLink = GetPageLink(pageOfUsers.PageSize, pageOfUsers.CurrentPage - 1),
+            nextPageLink = GetPageLink(pageOfUsers.PageSize, pageOfUsers.CurrentPage + 1),
+            totalCount = pageOfUsers.TotalCount,
+            pageSize = pageOfUsers.PageSize,
+            currentPage = pageOfUsers.CurrentPage,
+            totalPages = pageOfUsers.TotalPages,
+        };
+
+        Response.Headers.Append("X-Pagination", JsonConvert.SerializeObject(paginationHeader));
+
+        return Ok(users);
+    }
+
+    private string? GetPageLink(int pageSize, int pageNumber)
+    {
+        if (pageNumber is < 1 or > 20)
+        {
+            return null;
+        }
+
+        return linkGenerator.GetUriByRouteValues(
+            HttpContext,
+            nameof(GetUsers),
+            new UsersGetRequest
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
     }
 }
