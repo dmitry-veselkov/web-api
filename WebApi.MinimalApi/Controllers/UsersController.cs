@@ -16,12 +16,14 @@ public class UsersController : Controller
     private readonly IUserRepository userRepository;
     private readonly IMapper mapper;
     private readonly LinkGenerator linkGenerator;
+    private readonly EndpointDataSource dataSource;
 
-    public UsersController(IUserRepository userRepository, IMapper mapper, LinkGenerator linkGenerator)
+    public UsersController(IUserRepository userRepository, IMapper mapper, LinkGenerator linkGenerator, EndpointDataSource dataSource)
     {
         this.userRepository = userRepository;
         this.mapper = mapper;
         this.linkGenerator = linkGenerator;
+        this.dataSource = dataSource;
     }
 
     [HttpHead("{userId}")]
@@ -191,7 +193,13 @@ public class UsersController : Controller
     [HttpOptions]
     public IActionResult GetOptions()
     {
-        Response.Headers.Append("Allow", "POST, GET, OPTIONS");
+        var methods = dataSource.Endpoints
+            .SelectMany(e => e.Metadata.OfType<IHttpMethodMetadata>())
+            .SelectMany(m => m.HttpMethods)
+            .Distinct()
+            .ToArray();
+
+        Response.Headers.Append("Allow", string.Join(", ", methods));
 
         return Ok();
     }
