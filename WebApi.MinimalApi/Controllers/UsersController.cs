@@ -187,4 +187,12 @@ public class UsersController : Controller
                 PageSize = pageSize
             });
     }
+
+    [HttpOptions]
+    public IActionResult GetOptions()
+    {
+        Response.Headers.Append("Allow", "POST, GET, OPTIONS");
+
+        return Ok();
+    }
 }
