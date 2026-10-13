@@ -11,6 +11,7 @@ public static class MapperConfigurationExtensions
         config.SetupUserEntityToResponse();
         config.SetupUserCreationRequestToEntity();
         config.SetupUserUpdateRequestToEntity();
+        config.SetupUserToUserUpdateRequest();
     }
 
     private static void SetupUserEntityToResponse(this IMapperConfigurationExpression config)
@@ -30,5 +31,10 @@ public static class MapperConfigurationExtensions
     private static void SetupUserUpdateRequestToEntity(this IMapperConfigurationExpression config)
     {
         config.CreateMap<UserUpdateRequest, UserEntity>();
+    }
+
+    private static void SetupUserToUserUpdateRequest(this IMapperConfigurationExpression config)
+    {
+        config.CreateMap<UserEntity, UserUpdateRequest>();
     }
 }

@@ -70,7 +70,7 @@ public class UsersController : Controller
         {
             return UnprocessableEntity(ModelState);
         }
-        
+
         var user = mapper.Map(request, new UserEntity(userId));
         userRepository.UpdateOrInsert(user, out var isInserted);
 
@@ -81,20 +81,35 @@ public class UsersController : Controller
                 new { userId = user.Id },
                 user.Id);
         }
-        
+
         return NoContent();
     }
 
     [HttpPatch("{userId}")]
-    public IActionResult PartiallyUpdateUser([FromRoute] Guid userId, [FromBody] JsonPatchDocument<UserUpdateRequest> patchDoc)
+    public IActionResult PartiallyUpdateUser([FromRoute] Guid userId, [FromBody] JsonPatchDocument<UserUpdateRequest>? patchDoc)
     {
+        if (patchDoc is null)
+        {
+            return BadRequest();
+        }
+
         var user = userRepository.FindById(userId);
         if (user is null)
         {
             return NotFound();
         }
-        
+
         var userUpdate = mapper.Map<UserUpdateRequest>(user);
         patchDoc.ApplyTo(userUpdate, ModelState);
+
+        if (!TryValidateModel(userUpdate))
+        {
+            return UnprocessableEntity(ModelState);
+        }
+
+        var updatedUser = mapper.Map<UserEntity>(userUpdate);
+        userRepository.Update(updatedUser);
+
+        return NoContent();
     }
 }
