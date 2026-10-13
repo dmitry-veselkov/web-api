@@ -21,6 +21,7 @@ public class UsersController : Controller
         this.mapper = mapper;
     }
 
+    [HttpHead("{userId}")]
     [HttpGet("{userId}", Name = nameof(GetUserById))]
     public ActionResult<UserResponse> GetUserById([FromRoute] Guid userId)
     {
@@ -31,6 +32,12 @@ public class UsersController : Controller
         }
 
         var userDto = mapper.Map<UserResponse>(user);
+
+        if (HttpMethods.IsHead(Request.Method))
+        {
+            Response.Headers.Append("Content-Type", "application/json; charset=utf-8");
+            return Ok();
+        }
 
         return userDto;
     }
@@ -116,12 +123,12 @@ public class UsersController : Controller
     [HttpDelete("{userId}")]
     public IActionResult DeleteUser([FromRoute] Guid userId)
     {
-        var user =  userRepository.FindById(userId);
+        var user = userRepository.FindById(userId);
         if (user is null)
         {
             return NotFound();
         }
-        
+
         userRepository.Delete(userId);
 
         return NoContent();
